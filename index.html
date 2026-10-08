@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10141f">
+  <title>Marble Crush — Frog's Run</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #10141f;
+      color: #f7f6ef;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      --muted: #939bad;
+      --panel: #191f2d;
+      --line: rgba(255, 255, 255, 0.08);
+      --mint: #7ee6ba;
+      --gold: #ffc86b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 50% -20%, rgba(61, 92, 110, 0.26), transparent 52%),
+        #10141f;
+    }
+
+    button { font: inherit; }
+
+    .shell {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
+
+    .topbar, .brand, .header-actions, .game-heading, .panel-heading, .stat-label, .next-row {
+      display: flex;
+      align-items: center;
+    }
+
+    .topbar, .game-heading { justify-content: space-between; }
+
+    .brand { gap: 12px; }
+
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid rgba(126, 230, 186, 0.28);
+      border-radius: 14px;
+      background: rgba(126, 230, 186, 0.1);
+      font-size: 22px;
+    }
+
+    .brand-name { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 0.08em; }
+    .brand-caption { margin: 3px 0 0; color: var(--muted); font-size: 11px; letter-spacing: 0.13em; text-transform: uppercase; }
+    .header-actions { gap: 10px; }
+
+    .icon-button, .secondary-button {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #1a202d;
+      color: #d8dbe3;
+      cursor: pointer;
+      transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+    }
+
+    .icon-button { width: 42px; font-size: 16px; }
+    .secondary-button { padding: 0 14px; font-size: 12px; font-weight: 700; }
+    .icon-button:hover, .secondary-button:hover { border-color: rgba(126, 230, 186, 0.45); background: #222b39; }
+    button:active { transform: translateY(1px); }
+    button:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+
+    .page-title { margin: 32px 0 7px; font-size: clamp(25px, 4vw, 36px); letter-spacing: -0.045em; }
+    .page-subtitle { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
+
+    .game-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 230px;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .game-card, .side-card {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: linear-gradient(145deg, rgba(28, 34, 48, 0.97), rgba(22, 27, 39, 0.97));
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+    }
+
+    .game-card { min-width: 0; padding: 16px; }
+    .game-heading { min-height: 34px; margin-bottom: 12px; }
+    .level-label { display: flex; align-items: center; gap: 8px; color: #aeb6c6; font-size: 11px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
+    .level-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px rgba(126, 230, 186, 0.8); }
+    .game-heading .secondary-button { min-height: 34px; }
+
+    .canvas-wrap {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      background: #131a25;
+      aspect-ratio: 3 / 2;
+    }
+
+    canvas { display: block; width: 100%; height: 100%; }
+
+    .game-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(12, 16, 24, 0.68);
+      backdrop-filter: blur(5px);
+    }
+
+    .game-overlay[hidden] { display: none; }
+
+    .overlay-card {
+      width: min(360px, 100%);
+      padding: 27px 25px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 18px;
+      background: rgba(27, 34, 48, 0.96);
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.36);
+    }
+
+    .overlay-icon { margin: 0 0 9px; font-size: 31px; }
+    .overlay-card h2 { margin: 0 0 9px; font-size: 23px; letter-spacing: -0.03em; }
+    .overlay-card p { margin: 0 auto 19px; max-width: 280px; color: #aeb6c6; font-size: 13px; line-height: 1.6; }
+
+    .primary-button {
+      min-height: 44px;
+      padding: 0 22px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--mint);
+      color: #11251d;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 900;
+      transition: filter 150ms ease, transform 150ms ease;
+    }
+
+    .primary-button:hover { filter: brightness(1.08); }
+
+    .game-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 3px 0;
+      color: #8e98aa;
+      font-size: 11px;
+    }
+
+    .game-footer strong { color: #d8dbe3; font-weight: 700; }
+
+    .sidebar { display: flex; flex-direction: column; gap: 12px; }
+    .side-card { padding: 17px; }
+    .panel-heading { justify-content: space-between; margin-bottom: 15px; }
+    .panel-heading h2 { margin: 0; color: #aeb6c6; font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+
+    .score-value { font-size: 32px; font-weight: 800; letter-spacing: -0.055em; font-variant-numeric: tabular-nums; }
+    .score-caption { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .best-score { padding-top: 13px; margin-top: 15px; border-top: 1px solid var(--line); }
+    .stat-label { justify-content: space-between; margin-bottom: 8px; color: #99a3b4; font-size: 11px; }
+    .stat-label strong { color: #e7e8eb; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+    .progress-track { height: 6px; overflow: hidden; border-radius: 9px; background: #303748; }
+    .progress-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #79dfb3, #d9e98a); transition: width 180ms ease; }
+    .lives { color: #ff8f9c; font-size: 15px; letter-spacing: 3px; }
+
+    .ammo-area { display: flex; align-items: center; gap: 13px; }
+    .ammo-ball, .mini-ball {
+      position: relative;
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 50%;
+      box-shadow: inset -4px -5px 7px rgba(0, 0, 0, 0.24), 0 3px 10px rgba(0, 0, 0, 0.2);
+    }
+    .ammo-ball::after, .mini-ball::after {
+      position: absolute;
+      top: 5px;
+      left: 7px;
+      width: 8px;
+      height: 5px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.75);
+      content: "";
+      transform: rotate(-32deg);
+    }
+    .next-row { gap: 9px; margin-top: 11px; color: #8e98aa; font-size: 10px; }
+    .mini-ball { width: 17px; height: 17px; }
+    .mini-ball::after { top: 3px; left: 4px; width: 5px; height: 3px; }
+
+    .controls-list { display: grid; gap: 11px; }
+    .control-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #a0a9b9; font-size: 11px; }
+    .keycap { min-width: 28px; padding: 5px 7px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 7px; background: #222938; color: #d9dde5; font-size: 10px; text-align: center; }
+    .tip { margin: 0; color: #a0a9b9; font-size: 11px; line-height: 1.6; }
+    .tip strong { color: var(--mint); }
+
+    @media (max-width: 780px) {
+      .game-layout { grid-template-columns: minmax(0, 1fr); }
+      .sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .sidebar .side-card:first-child { grid-row: span 2; }
+    }
+
+    @media (max-width: 520px) {
+      .shell { width: min(100% - 22px, 440px); padding-top: 16px; }
+      .brand-mark { width: 37px; height: 37px; border-radius: 12px; }
+      .brand-name { font-size: 13px; }
+      .brand-caption { font-size: 9px; }
+      .header-actions { gap: 6px; }
+      .icon-button { width: 37px; min-height: 37px; }
+      .secondary-button { min-height: 37px; padding: 0 10px; font-size: 11px; }
+      .page-title { margin-top: 25px; }
+      .page-subtitle { font-size: 12px; }
+      .game-card { padding: 10px; border-radius: 16px; }
+      .canvas-wrap { border-radius: 10px; }
+      .game-footer { font-size: 9px; }
+      .sidebar { gap: 9px; }
+      .side-card { padding: 13px; border-radius: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">🐸</div>
+        <div>
+          <p class="brand-name">MARBLE CRUSH</p>
+          <p class="brand-caption">Frog's run</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-button" id="sound-button" type="button" aria-label="Turn sound off" title="Toggle sound">♫</button>
+        <button class="icon-button" id="pause-button" type="button" aria-label="Pause game" title="Pause">Ⅱ</button>
+        <button class="secondary-button" id="restart-button" type="button">↻ <span>Restart</span></button>
+      </div>
+    </header>
+
+    <h1 class="page-title">Clear the marble trail.</h1>
+    <p class="page-subtitle">Match colors, make combos, and keep the rolling chain away from the burrow.</p>
+
+    <section class="game-layout" aria-label="Marble Crush game">
+      <div class="game-card">
+        <div class="game-heading">
+          <div class="level-label"><span class="level-dot"></span><span id="level-label">Level 1</span></div>
+          <button class="secondary-button" id="new-game-button" type="button">New game</button>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="game-canvas" width="900" height="600" aria-label="Marble shooter game board. Aim with your pointer and click to shoot."></canvas>
+          <div class="game-overlay" id="game-overlay">
+            <div class="overlay-card">
+              <p class="overlay-icon" aria-hidden="true">🐸</p>
+              <h2 id="overlay-title">Ready, hopper?</h2>
+              <p id="overlay-message">Shoot marbles into the trail. Match three or more of the same color before they reach the burrow.</p>
+              <button class="primary-button" id="overlay-button" type="button">Let's play</button>
+            </div>
+          </div>
+        </div>
+        <div class="game-footer">
+          <span><strong>Tip:</strong> tap the shooter to swap your next marble</span>
+          <span>Built for quick breaks <span aria-hidden="true">✦</span></span>
+        </div>
+      </div>
+
+      <aside class="sidebar" aria-label="Game status and controls">
+        <section class="side-card">
+          <div class="panel-heading"><h2>Score</h2><span aria-hidden="true">✦</span></div>
+          <div class="score-value" id="score-value" aria-live="polite">00000</div>
+          <div class="score-caption">Keep the combos going</div>
+          <div class="best-score">
+            <div class="stat-label"><span>Personal best</span><strong id="best-value">00000</strong></div>
+          </div>
+        </section>
+
+        <section class="side-card">
+          <div class="panel-heading"><h2>Trail progress</h2><span id="trail-count">0 marbles</span></div>
+          <div class="stat-label"><span>Burrow distance</span><strong id="distance-value">100%</strong></div>
+          <div class="progress-track" role="progressbar" aria-label="Burrow distance" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="stat-label" style="margin: 15px 0 0"><span>Lives</span><strong class="lives" id="lives-value">♥ ♥ ♥</strong></div>
+        </section>
+
+        <section class="side-card">
+          <div class="panel-heading"><h2>In the slingshot</h2><span>Next up</span></div>
+          <div class="ammo-area">
+            <div class="ammo-ball" id="current-ball" aria-label="Current marble"></div>
+            <div>
+              <div style="font-size: 12px; font-weight: 750">Your marble</div>
+              <div style="margin-top: 3px; color: var(--muted); font-size: 10px">Make it count!</div>
+            </div>
+          </div>
+          <div class="next-row"><span>Up next</span><span class="mini-ball" id="next-ball"></span></div>
+        </section>
+
+        <section class="side-card">
+          <div class="panel-heading"><h2>How to play</h2><span aria-hidden="true">?</span></div>
+          <div class="controls-list">
+            <div class="control-row"><span>Aim &amp; shoot</span><span class="keycap">CLICK</span></div>
+            <div class="control-row"><span>Fire marble</span><span class="keycap">SPACE</span></div>
+            <div class="control-row"><span>Swap colors</span><span class="keycap">RIGHT CLICK</span></div>
+            <p class="tip">Line up <strong>3 or more</strong> matching marbles to pop them. Clear the trail to move on!</p>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const WIDTH = 900;
+      const HEIGHT = 600;
+      const BALL_RADIUS = 19;
+      const BALL_SPACING = 39;
+      const COLORS = [
+        { name: "coral", fill: "#fa6e77", shade: "#bd3d56", light: "#ffabb0" },
+        { name: "blue", fill: "#63a9fa", shade: "#3571c5", light: "#a8d5ff" },
+        { name: "gold", fill: "#ffc75e", shade: "#d18c33", light: "#ffe6a0" },
+        { name: "purple", fill: "#b28bfa", shade: "#7955c8", light: "#d9c2ff" },
+        { name: "mint", fill: "#62d7b0", shade: "#319b80", light: "#b0f6d8" }
+      ];
+      const PATH_POINTS = [
+        { x: -20, y: 115 }, { x: 858, y: 115 }, { x: 858, y: 220 },
+        { x: 42, y: 220 }, { x: 42, y: 325 }, { x: 858, y: 325 },
+        { x: 858, y: 430 }, { x: 450, y: 430 }
+      ];
+
+      const canvas = document.querySelector("#game-canvas");
+      const ctx = canvas.getContext("2d");
+      const overlay = document.querySelector("#game-overlay");
+      const overlayTitle = document.querySelector("#overlay-title");
+      const overlayMessage = document.querySelector("#overlay-message");
+      const overlayButton = document.querySelector("#overlay-button");
+      const scoreValue = document.querySelector("#score-value");
+      const bestValue = document.querySelector("#best-value");
+      const levelLabel = document.querySelector("#level-label");
+      const trailCount = document.querySelector("#trail-count");
+      const distanceValue = document.querySelector("#distance-value");
+      const progressFill = document.querySelector("#progress-fill");
+      const progressTrack = document.querySelector(".progress-track");
+      const livesValue = document.querySelector("#lives-value");
+      const currentBall = document.querySelector("#current-ball");
+      const nextBall = document.querySelector("#next-ball");
+      const soundButton = document.querySelector("#sound-button");
+      const pauseButton = document.querySelector("#pause-button");
+
+      const pathSegments = [];
+      let pathLength = 0;
+      for (let i = 1; i < PATH_POINTS.length; i++) {
+        const a = PATH_POINTS[i - 1];
+        const b = PATH_POINTS[i];
+        const length = Math.hypot(b.x - a.x, b.y - a.y);
+        pathSegments.push({ a, b, start: pathLength, length });
+        pathLength += length;
+      }
+
+      const state = {
+        status: "ready",
+        balls: [],
+        shots: [],
+        score: 0,
+        best: loadBest(),
+        level: 1,
+        lives: 3,
+        speed: 38,
+        spawnTimer: 0,
+        spawnEvery: 1.15,
+        currentColor: 0,
+        nextColor: 1,
+        angle: -Math.PI / 2,
+        aim: { x: 450, y: 250 },
+        sound: true,
+        lastTime: 0,
+        animationFrame: 0,
+        particles: [],
+        combo: 0,
+        comboTimer: 0,
+        pointerDown: false
+      };
+
+      function loadBest() {
+        try {
+          return Number(localStorage.getItem("marble-crush-best")) || 0;
+        } catch (error) {
+          console.warn("Could not read the personal best from local storage.", error);
+          return 0;
+        }
+      }
+
+      function saveBest() {
+        try {
+          localStorage.setItem("marble-crush-best", String(state.best));
+        } catch (error) {
+          console.warn("Could not save the personal best to local storage.", error);
+        }
+      }
+
+      function randomColor(exclude = -1) {
+        const available = COLORS.map((_, index) => index).filter((index) => index !== exclude);
+        return available[Math.floor(Math.random() * available.length)];
+      }
+
+      function setBallColor(element, colorIndex) {
+        const color = COLORS[colorIndex];
+        element.style.background = `radial-gradient(circle at 32% 27%, ${color.light}, ${color.fill} 48%, ${color.shade})`;
+        element.setAttribute("aria-label", `${color.name} marble`);
+      }
+
+      function resetGame(startImmediately) {
+        state.balls = [];
+        state.shots = [];
+        state.particles = [];
+        state.score = 0;
+        state.level = 1;
+        state.lives = 3;
+        state.speed = 38;
+        state.spawnTimer = 0;
+        state.spawnEvery = 1.15;
+        state.combo = 0;
+        state.comboTimer = 0;
+        state.angle = -Math.PI / 2;
+        state.currentColor = randomColor();
+        state.nextColor = randomColor(state.currentColor);
+        for (let i = 0; i < 9; i++) {
+          state.balls.push({ d: i * BALL_SPACING, color: randomColor() });
+        }
+        state.status = startImmediately ? "playing" : "ready";
+        updateHud();
+        if (startImmediately) hideOverlay();
+        else showOverlay("Ready, hopper?", "Shoot marbles into the trail. Match three or more of the same color before they reach the burrow.", "Let's play");
+      }
+
+      function startGame() {
+        if (state.status === "ready" || state.status === "gameover" || state.status === "won") {
+          resetGame(true);
+        } else if (state.status === "paused") {
+          state.status = "playing";
+          hideOverlay();
+        }
+        state.lastTime = performance.now();
+        updateButtons();
+      }
+
+      function showOverlay(title, message, buttonText) {
+        overlayTitle.textContent = title;
+        overlayMessage.textContent = message;
+        overlayButton.textContent = buttonText;
+        overlay.hidden = false;
+      }
+
+      function hideOverlay() {
+        overlay.hidden = true;
+      }
+
+      function updateButtons() {
+        const paused = state.status === "paused";
+        pauseButton.textContent = paused ? "▶" : "Ⅱ";
+        pauseButton.setAttribute("aria-label", paused ? "Resume game" : "Pause game");
+        pauseButton.title = paused ? "Resume" : "Pause";
+        pauseButton.disabled = state.status === "ready" || state.status === "gameover" || state.status === "won";
+        pauseButton.style.opacity = pauseButton.disabled ? "0.5" : "1";
+      }
+
+      function updateHud() {
+        scoreValue.textContent = String(state.score).padStart(5, "0");
+        bestValue.textContent = String(state.best).padStart(5, "0");
+        levelLabel.textContent = `Level ${state.level}`;
+        trailCount.textContent = `${state.balls.length} ${state.balls.length === 1 ? "marble" : "marbles"}`;
+        const remaining = Math.max(0, 100 * (1 - state.balls.reduce((max, ball) => Math.max(max, ball.d), 0) / pathLength));
+        distanceValue.textContent = `${Math.round(remaining)}%`;
+        progressFill.style.width = `${remaining}%`;
+        progressTrack.setAttribute("aria-valuenow", String(Math.round(remaining)));
+        livesValue.textContent = `${"♥ ".repeat(state.lives)}${"♡ ".repeat(3 - state.lives)}`.trim();
+        setBallColor(currentBall, state.currentColor);
+        setBallColor(nextBall, state.nextColor);
+        updateButtons();
+      }
+
+      function addScore(points) {
+        state.score += points;
+        if (state.score > state.best) {
+          state.best = state.score;
+          saveBest();
+        }
+        updateHud();
+      }
+
+      function pointOnPath(distance) {
+        const d = Math.max(0, Math.min(pathLength, distance));
+        const segment = pathSegments.find((part) => d <= part.start + part.length) || pathSegments[pathSegments.length - 1];
+        const t = Math.max(0, Math.min(1, (d - segment.start) / segment.length));
+        return {
+          x: segment.a.x + (segment.b.x - segment.a.x) * t,
+          y: segment.a.y + (segment.b.y - segment.a.y) * t
+        };
+      }
+
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        ctx.setTransform(canvas.width / WIDTH, 0, 0, canvas.height / HEIGHT, 0, 0);
+      }
+
+      function canvasPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (event.clientX - rect.left) * WIDTH / rect.width,
+          y: (event.clientY - rect.top) * HEIGHT / rect.height
+        };
+      }
+
+      function setAim(point) {
+        state.aim = point;
+        const dx = point.x - 450;
+        const dy = point.y - 535;
+        state.angle = Math.max(-Math.PI + 0.16, Math.min(-0.16, Math.atan2(dy, dx)));
+      }
+
+      function shoot() {
+        if (state.status !== "playing") return;
+        const origin = { x: 450 + Math.cos(state.angle) * 42, y: 535 + Math.sin(state.angle) * 42 };
+        state.shots.push({
+          x: origin.x,
+          y: origin.y,
+          vx: Math.cos(state.angle) * 650,
+          vy: Math.sin(state.angle) * 650,
+          color: state.currentColor
+        });
+        playTone(540, 0.055, "triangle");
+        state.currentColor = state.nextColor;
+        state.nextColor = randomColor(state.currentColor);
+        updateHud();
+      }
+
+      function swapColors() {
+        [state.currentColor, state.nextColor] = [state.nextColor, state.currentColor];
+        updateHud();
+        playTone(330, 0.045, "sine");
+      }
+
+      function playTone(frequency, duration, type) {
+        if (!state.sound) return;
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          const audio = playTone.audio || (playTone.audio = new AudioContextClass());
+          if (audio.state === "suspended") audio.resume();
+          const oscillator = audio.createOscillator();
+          const gain = audio.createGain();
+          oscillator.type = type;
+          oscillator.frequency.value = frequency;
+          gain.gain.setValueAtTime(0.045, audio.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + duration);
+          oscillator.connect(gain);
+          gain.connect(audio.destination);
+          oscillator.start();
+          oscillator.stop(audio.currentTime + duration);
+        } catch (error) {
+          console.warn("Could not play game audio.", error);
+          state.sound = false;
+          soundButton.textContent = "×";
+          soundButton.setAttribute("aria-label", "Turn sound on");
+        }
+      }
+
+      function emitParticles(x, y, colorIndex, amount = 12) {
+        const color = COLORS[colorIndex];
+        for (let i = 0; i < amount; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 60 + Math.random() * 200;
+          state.particles.push({
+            x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+            life: 0.35 + Math.random() * 0.35, maxLife: 0.7, color: color.fill,
+            size: 2 + Math.random() * 3
+          });
+        }
+      }
+
+      function resolveShot(shot) {
+        let nearestIndex = -1;
+        let nearestDistance = Infinity;
+        let insertDistance = 0;
+
+        for (let i = 0; i < state.balls.length; i++) {
+          const ball = state.balls[i];
+          const point = pointOnPath(ball.d);
+          const distance = Math.hypot(shot.x - point.x, shot.y - point.y);
+          if (distance < BALL_RADIUS * 2 + 3 && distance < nearestDistance) {
+            nearestIndex = i;
+            nearestDistance = distance;
+            insertDistance = ball.d + (shot.x - point.x) * (state.balls[i + 1] ? 1 : -1) * 0.12;
+          }
+        }
+
+        if (nearestIndex === -1) {
+          if (shot.x < 10 || shot.x > WIDTH - 10 || shot.y < 5 || shot.y > HEIGHT - 5) return true;
+          return false;
+        }
+
+        const insertAt = Math.max(0, Math.min(state.balls.length, nearestIndex + (shot.x > pointOnPath(state.balls[nearestIndex].d).x ? 1 : 0)));
+        const anchor = state.balls[nearestIndex];
+        insertDistance = anchor.d + (insertAt > nearestIndex ? BALL_SPACING / 2 : -BALL_SPACING / 2);
+        state.balls.splice(insertAt, 0, { d: Math.max(0, insertDistance), color: shot.color });
+
+        const groupStart = insertAt;
+        let groupLeft = groupStart;
+        let groupRight = groupStart;
+        while (groupLeft > 0 && state.balls[groupLeft - 1].color === shot.color) groupLeft--;
+        while (groupRight < state.balls.length - 1 && state.balls[groupRight + 1].color === shot.color) groupRight++;
+
+        if (groupRight - groupLeft + 1 >= 3) {
+          const removed = state.balls.splice(groupLeft, groupRight - groupLeft + 1);
+          const burst = pointOnPath(insertDistance);
+          emitParticles(burst.x, burst.y, shot.color, 8 + removed.length * 2);
+          state.combo++;
+          state.comboTimer = 1.5;
+          addScore(removed.length * 10 * Math.max(1, state.combo));
+          playTone(700 + Math.min(4, state.combo) * 100, 0.11, "sine");
+          compactAndCascade(groupLeft, insertDistance);
+        } else {
+          state.combo = 0;
+        }
+
+        updateHud();
+        return true;
+      }
+
+      function compactAndCascade(index, clearedAt) {
+        for (let i = 1; i < state.balls.length; i++) {
+          if (state.balls[i].d - state.balls[i - 1].d > BALL_SPACING) {
+            state.balls[i].d = state.balls[i - 1].d + BALL_SPACING;
+          }
+        }
+
+        const joinIndex = Math.max(0, Math.min(state.balls.length - 1, index - 1));
+        if (state.balls.length < 3 || joinIndex >= state.balls.length - 1) return;
+        let left = joinIndex;
+        let right = joinIndex + 1;
+        if (state.balls[left].color !== state.balls[right].color || state.balls[right].d - state.balls[left].d > BALL_SPACING + 1) return;
+        const color = state.balls[left].color;
+        while (left > 0 && state.balls[left - 1].color === color && state.balls[left].d - state.balls[left - 1].d <= BALL_SPACING + 1) left--;
+        while (right < state.balls.length - 1 && state.balls[right + 1].color === color && state.balls[right + 1].d - state.balls[right].d <= BALL_SPACING + 1) right++;
+        if (right - left + 1 >= 3) {
+          const removed = state.balls.splice(left, right - left + 1);
+          const burst = pointOnPath(clearedAt);
+          emitParticles(burst.x, burst.y, color, 8 + removed.length * 2);
+          state.combo++;
+          state.comboTimer = 1.5;
+          addScore(removed.length * 10 * state.combo);
+          compactAndCascade(left, clearedAt);
+        }
+      }
+
+      function spawnBall() {
+        const color = randomColor();
+        const first = state.balls[0];
+        if (!first || first.d > BALL_SPACING * 1.2) {
+          state.balls.unshift({ d: 0, color });
+        }
+      }
+
+      function update(dt) {
+        if (state.status !== "playing") return;
+        state.spawnTimer += dt;
+        if (state.spawnTimer >= state.spawnEvery) {
+          state.spawnTimer -= state.spawnEvery;
+          spawnBall();
+        }
+
+        for (const ball of state.balls) ball.d += state.speed * dt;
+        for (let i = 1; i < state.balls.length; i++) {
+          if (state.balls[i].d - state.balls[i - 1].d < BALL_SPACING) {
+            state.balls[i - 1].d = state.balls[i].d - BALL_SPACING;
+          }
+        }
+
+        for (let i = state.shots.length - 1; i >= 0; i--) {
+          const shot = state.shots[i];
+          shot.x += shot.vx * dt;
+          shot.y += shot.vy * dt;
+          if (resolveShot(shot)) state.shots.splice(i, 1);
+        }
+
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const particle = state.particles[i];
+          particle.x += particle.vx * dt;
+          particle.y += particle.vy * dt;
+          particle.vy += 130 * dt;
+          particle.life -= dt;
+          if (particle.life <= 0) state.particles.splice(i, 1);
+        }
+
+        if (state.comboTimer > 0) state.comboTimer -= dt;
+        else state.combo = 0;
+
+        if (state.balls.length && state.balls[state.balls.length - 1].d >= pathLength - 7) {
+          state.lives--;
+          state.balls.pop();
+          state.balls.forEach((ball) => { ball.d = Math.max(0, ball.d - 70); });
+          state.combo = 0;
+          if (state.lives <= 0) {
+            state.status = "gameover";
+            showOverlay("The trail got away!", `You scored ${String(state.score).padStart(5, "0")}. Ready to give it another hop?`, "Try again");
+          } else {
+            playTone(170, 0.2, "sawtooth");
+          }
+        }
+
+        if (state.balls.length === 0 && state.status === "playing") {
+          state.level++;
+          state.speed = Math.min(72, state.speed + 5);
+          state.spawnEvery = Math.max(0.63, state.spawnEvery - 0.08);
+          for (let i = 0; i < 7 + state.level; i++) {
+            state.balls.push({ d: i * BALL_SPACING, color: randomColor() });
+          }
+          playTone(880, 0.18, "triangle");
+        }
+        updateHud();
+      }
+
+      function drawBall(x, y, colorIndex, radius = BALL_RADIUS) {
+        const color = COLORS[colorIndex];
+        const gradient = ctx.createRadialGradient(x - radius * 0.32, y - radius * 0.38, radius * 0.1, x, y, radius);
+        gradient.addColorStop(0, color.light);
+        gradient.addColorStop(0.45, color.fill);
+        gradient.addColorStop(1, color.shade);
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.3)";
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(x - radius * 0.27, y - radius * 0.42, radius * 0.23, radius * 0.12, -0.5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fill();
+      }
+
+      function drawBackground() {
+        const background = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+        background.addColorStop(0, "#182434");
+        background.addColorStop(1, "#111923");
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        ctx.save();
+        ctx.strokeStyle = "rgba(179, 206, 216, 0.055)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= WIDTH; x += 35) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, HEIGHT); ctx.stroke();
+        }
+        for (let y = 0; y <= HEIGHT; y += 35) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WIDTH, y); ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawTrack() {
+        ctx.save();
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(PATH_POINTS[0].x, PATH_POINTS[0].y);
+        for (let i = 1; i < PATH_POINTS.length; i++) ctx.lineTo(PATH_POINTS[i].x, PATH_POINTS[i].y);
+        ctx.strokeStyle = "rgba(5, 10, 17, 0.52)";
+        ctx.lineWidth = 54;
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(104, 130, 146, 0.25)";
+        ctx.lineWidth = 45;
+        ctx.stroke();
+        ctx.setLineDash([3, 14]);
+        ctx.strokeStyle = "rgba(206, 224, 226, 0.16)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const start = pointOnPath(0);
+        ctx.fillStyle = "#8ce6bd";
+        ctx.font = "800 12px system-ui, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("START", 23, 81);
+        ctx.beginPath();
+        ctx.arc(start.x + 21, start.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = "#8ce6bd";
+        ctx.fill();
+
+        const goal = pointOnPath(pathLength);
+        ctx.beginPath();
+        ctx.arc(goal.x, goal.y, 29, 0, Math.PI * 2);
+        ctx.fillStyle = "#252a32";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 151, 123, 0.8)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(goal.x, goal.y, 18, 0, Math.PI * 2);
+        ctx.fillStyle = "#10141c";
+        ctx.fill();
+        ctx.fillStyle = "#ff9a80";
+        ctx.textAlign = "center";
+        ctx.font = "800 10px system-ui, sans-serif";
+        ctx.fillText("BURROW", goal.x, goal.y + 44);
+        ctx.restore();
+      }
+
+      function drawFrog() {
+        const x = 450;
+        const y = 535;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(state.angle + Math.PI / 2);
+        ctx.shadowColor = "rgba(80, 221, 169, 0.28)";
+        ctx.shadowBlur = 17;
+
+        ctx.fillStyle = "#25896c";
+        ctx.beginPath();
+        ctx.ellipse(-21, 8, 13, 16, -0.55, 0, Math.PI * 2);
+        ctx.ellipse(21, 8, 13, 16, 0.55, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#46bb8e";
+        ctx.beginPath();
+        ctx.ellipse(0, 1, 33, 29, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#b6efba";
+        ctx.beginPath();
+        ctx.ellipse(0, 9, 19, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#62d7a6";
+        ctx.beginPath();
+        ctx.arc(-18, -19, 13, 0, Math.PI * 2);
+        ctx.arc(18, -19, 13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#f6f2db";
+        ctx.beginPath();
+        ctx.arc(-18, -19, 7, 0, Math.PI * 2);
+        ctx.arc(18, -19, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#202c31";
+        ctx.beginPath();
+        ctx.arc(-17, -18, 3.4, 0, Math.PI * 2);
+        ctx.arc(19, -18, 3.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        const muzzle = { x: x + Math.cos(state.angle) * 38, y: y + Math.sin(state.angle) * 38 };
+        drawBall(muzzle.x, muzzle.y, state.currentColor, 13);
+      }
+
+      function drawAimLine() {
+        if (state.status !== "playing") return;
+        const startX = 450 + Math.cos(state.angle) * 53;
+        const startY = 535 + Math.sin(state.angle) * 53;
+        ctx.save();
+        ctx.setLineDash([5, 9]);
+        ctx.strokeStyle = "rgba(223, 241, 228, 0.32)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(startX + Math.cos(state.angle) * 86, startY + Math.sin(state.angle) * 86);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        drawBackground();
+        drawTrack();
+        for (const ball of state.balls) {
+          const point = pointOnPath(ball.d);
+          drawBall(point.x, point.y, ball.color);
+        }
+        drawAimLine();
+        drawFrog();
+        for (const shot of state.shots) drawBall(shot.x, shot.y, shot.color, 13);
+
+        for (const particle of state.particles) {
+          ctx.globalAlpha = Math.max(0, particle.life / particle.maxLife);
+          ctx.fillStyle = particle.color;
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        if (state.combo > 1 && state.comboTimer > 0) {
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, state.comboTimer);
+          ctx.fillStyle = "#ffe49a";
+          ctx.font = "900 25px system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.shadowColor = "rgba(255, 200, 107, 0.55)";
+          ctx.shadowBlur = 12;
+          ctx.fillText(`${state.combo}× COMBO!`, 450, 492);
+          ctx.restore();
+        }
+      }
+
+      function frame(time) {
+        const dt = Math.min(0.035, (time - (state.lastTime || time)) / 1000);
+        state.lastTime = time;
+        update(dt);
+        draw();
+        state.animationFrame = requestAnimationFrame(frame);
+      }
+
+      canvas.addEventListener("pointermove", (event) => setAim(canvasPoint(event)));
+      canvas.addEventListener("pointerdown", (event) => {
+        if (event.button === 2) {
+          event.preventDefault();
+          swapColors();
+          return;
+        }
+        if (state.status !== "playing") return;
+        const point = canvasPoint(event);
+        setAim(point);
+        if (point.y > 475 && Math.abs(point.x - 450) < 75) swapColors();
+        else shoot();
+      });
+      canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+
+      window.addEventListener("keydown", (event) => {
+        if (event.code === "Space") {
+          event.preventDefault();
+          if (state.status === "ready" || state.status === "paused") startGame();
+          else shoot();
+        } else if (event.code === "ArrowLeft") {
+          state.angle = Math.max(-Math.PI + 0.16, state.angle - 0.08);
+          event.preventDefault();
+        } else if (event.code === "ArrowRight") {
+          state.angle = Math.min(-0.16, state.angle + 0.08);
+          event.preventDefault();
+        } else if (event.code === "KeyX") {
+          swapColors();
+        } else if (event.code === "Escape" && state.status === "playing") {
+          pauseGame();
+        }
+      });
+
+      function pauseGame() {
+        if (state.status === "playing") {
+          state.status = "paused";
+          showOverlay("Take a breather.", "The marbles are paused. Jump back in whenever you're ready.", "Resume");
+        } else if (state.status === "paused") {
+          startGame();
+          return;
+        }
+        updateButtons();
+      }
+
+      overlayButton.addEventListener("click", startGame);
+      document.querySelector("#new-game-button").addEventListener("click", () => resetGame(true));
+      document.querySelector("#restart-button").addEventListener("click", () => resetGame(true));
+      pauseButton.addEventListener("click", pauseGame);
+      soundButton.addEventListener("click", () => {
+        state.sound = !state.sound;
+        soundButton.textContent = state.sound ? "♫" : "×";
+        soundButton.setAttribute("aria-label", state.sound ? "Turn sound off" : "Turn sound on");
+        if (state.sound) playTone(440, 0.06, "sine");
+      });
+
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+      resetGame(false);
+      state.lastTime = performance.now();
+      state.animationFrame = requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
